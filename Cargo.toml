@@ -1,0 +1,10 @@
+[package]
+name = "rusty_hue"
+version = "0.1.0"
+authors = ["Richard Mills <scripts-richard@gmail.com>"]
+
+[dependencies]
+curl = "0.4.12"
+serde = "1.0.59"
+serde_json = "1.0.17"
+serde_derive = "1.0.59"
