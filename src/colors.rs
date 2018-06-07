@@ -67,6 +67,10 @@ impl XY {
 
         XY{ x: x / (x + y + z), y: y / (x + y + z), brightness: brightness }
     }
+
+    pub fn xy_string(&self) -> String {
+        format!("[{}, {}]", self.x, self.y)
+    }
 }
 
 #[cfg(test)]
