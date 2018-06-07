@@ -1,11 +1,12 @@
-use curl::easy::Easy;
 use serde_json::Value;
 use std::error::Error;
 use std::fs::File;
 use std::io::prelude::*;
 use std::collections::HashMap;
 use serde_json;
+use reqwest;
 
+use colors;
 
 #[derive(Debug)]
 #[derive(Serialize, Deserialize)]
@@ -51,31 +52,21 @@ impl Hue {
         let token = get_token()?;
         let lights = HashMap::new();
 
-        let mut base_address = "http://".to_string() + &ip;
-        base_address.push_str("/api/");
-        base_address += &token;
-        base_address.push_str("/lights");
+        let base_address = format!("http://{}/api/{}/lights", ip, token);
 
-        let hue = Hue { ip: ip, token: token,  base_address: base_address, lights: lights };
+        let mut hue = Hue { ip: ip,
+                            token: token,
+                            base_address: base_address,
+                            lights: lights };
+
+        hue.get_lights()?;
 
         Ok(hue)
     }
 
-    pub fn get_lights(&mut self) -> Result<(), Box<Error>> {
-        let mut data = Vec::new();
-        let mut handle = Easy::new();
-
-        handle.url(&self.base_address).unwrap();
-        {
-            let mut transfer = handle.transfer();
-            transfer.write_function(|new_data| {
-                data.extend_from_slice(new_data);
-                Ok(new_data.len())
-            }).unwrap();
-            transfer.perform().unwrap();
-        }
-
-        let json: Value = serde_json::from_slice(&data)?;
+    fn get_lights(&mut self) -> Result<(), Box<Error>> {
+        let body = reqwest::get(&self.base_address)?.text()?;
+        let json: Value = serde_json::from_str(&body)?;
 
         let mut index = 1;
 
@@ -85,15 +76,27 @@ impl Hue {
             self.lights.insert(index.to_string(), light);
             index += 1;
         }
-
         Ok(())
     }
 
-    pub fn toggle_lights(mut self) -> Result<(), Box<Error>> {
+    fn power(&mut self, power: bool) -> Result<(), Box<Error>> {
+        for (index, light) in self.lights.iter_mut() {
+            if light.state.reachable && light.state.on != power {
+                let body = format!("{{\"on\":{}}}", power);
+                let client = reqwest::Client::new();
+                let url = format!("{}/{}/state", self.base_address, index);
+
+                client.put(&url).body(body).send()?;
+            }
+        }
+        Ok(())
+    }
+
+    pub fn toggle_lights(&mut self) -> Result<(), Box<Error>> {
         let mut all_off = true;
 
         for (_, light) in self.lights.iter_mut() {
-            if light.state.on {
+            if light.state.reachable && light.state.on {
                 all_off = false;
                 break;
             }
@@ -106,38 +109,22 @@ impl Hue {
         }
     }
 
-    pub fn power(mut self, power: bool) -> Result<(), Box<Error>> {
-        for (index, light) in self.lights.iter_mut() {
-            if light.state.on != power {
-                let mut url = self.base_address.clone() + "/" + index + "/state";
-                let mut body = String::from("{\"on\":");
-                body += &power.to_string();
-                body += "}";
-                let mut handle = Easy::new();
-                handle.url(&url).unwrap();
-                //build post request
-                //get post request
-            }
-        }
+    pub fn set_color_via_rgb(&self, index: &str, rgb: colors::RGB) -> Result<(), Box<Error>> {
+        let xy = colors::XY::from_rgb(rgb);
+        let url = format!("{}/{}/state", self.base_address, index);
+        let body = format!("{{\"bri\": {}, \"xy\": {} }}", xy.brightness, xy.xy_string());
+
+        let client = reqwest::Client::new();
+        client.put(&url).body(body).send()?;
+
         Ok(())
     }
 }
 
 
-fn get_hue_ip() -> Result<String, Box<Error>> {
-    let mut data = Vec::new();
-    let mut handle = Easy::new();
-    handle.url("https://www.meethue.com/api/nupnp")?;
-    {
-        let mut transfer = handle.transfer();
-        transfer.write_function(|new_data| {
-            data.extend_from_slice(new_data);
-            Ok(new_data.len())
-        }).unwrap();
-        transfer.perform()?;
-    }
-
-    let json: Value = serde_json::from_slice(&data)?;
+pub fn get_hue_ip() -> Result<String, Box<Error>> {
+    let body = reqwest::get("https://www.meethue.com/api/nupnp")?.text()?;
+    let json: Value = serde_json::from_str(&body)?;
 
     Ok(json[0]["internalipaddress"].to_string().replace("\"", ""))
 }
