@@ -73,6 +73,23 @@ impl XY {
     }
 }
 
+struct GamutPoint {
+    x: f32,
+    y: f32,
+}
+
+struct ColorGamut {
+    red: GamutPoint,
+    green: GamutPoint,
+    blue: GamutPoint,
+}
+
+const COLOR_GAMUT_B: ColorGamut = ColorGamut {
+    red: GamutPoint { x: 0.675, y: 0.322 },
+    green: GamutPoint { x: 0.409, y: 0.518 },
+    blue: GamutPoint { x: 0.167, y: 0.04 }
+};
+
 #[cfg(test)]
 mod test {
     use super::*;
