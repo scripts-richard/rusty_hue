@@ -1,4 +1,5 @@
 use serde_json::Value;
+use std::env;
 use std::error::Error;
 use std::fs::File;
 use std::io::prelude::*;
@@ -131,12 +132,19 @@ pub fn get_hue_ip() -> Result<String, Box<Error>> {
 
 
 fn get_token() -> Result<(String), Box<Error>> {
-    let mut f = File::open("token.txt")?;
-    let mut token = String::new();
+    match env::home_dir() {
+        Some(path) => {
+            let token_file = String::from(path.to_string_lossy()) + "/.token";
+            let mut f = File::open(token_file)?;
 
-    f.read_to_string(&mut token)?;
-    token.truncate(40);
-    Ok(token)
+            let mut token = String::new();
+            f.read_to_string(&mut token)?;
+            token.truncate(40);
+            return Ok(token);
+        }
+        None => Err(From::from("Failed to get home directory."))
+    }
+
 }
 
 
