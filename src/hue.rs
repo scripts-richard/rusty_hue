@@ -14,7 +14,7 @@ use colors;
 pub struct LightState {
     on: bool,
     bri: u8,
-    hue: u32,
+    hue: u16,
     sat: u8,
     effect: String,
     xy: Vec<f32>,
@@ -120,6 +120,29 @@ impl Hue {
 
         Ok(())
     }
+
+    pub fn print_info(&mut self) {
+        for (index, light) in self.lights.iter_mut() {
+            println!("Light {}:", index);
+            println!("\tName: {}", light.name);
+            println!("\tType: {}", light.light_type);
+            println!("\tModel ID: {}", light.modelid);
+            println!("\tManufacturer: {}", light.manufacturername);
+            println!("\tUnique ID: {}", light.uniqueid);
+            println!("\tSoftware Version: {}", light.swversion);
+            println!("\tState:");
+            println!("\t\tOn: {}", light.state.on);
+            println!("\t\tBrightness: {}", light.state.bri);
+            println!("\t\tHue: {}", light.state.hue);
+            println!("\t\tSaturation: {}", light.state.sat);
+            println!("\t\tEffect: {}", light.state.effect);
+            println!("\t\tx: {}\ty: {}", light.state.xy[0], light.state.xy[1]);
+            println!("\t\tColor Temperature: {}", light.state.ct);
+            println!("\t\tAlert: {}", light.state.alert);
+            println!("\t\tColor Mode: {}", light.state.colormode);
+            println!("\t\tReachable: {}", light.state.reachable);
+        }
+    }
 }
 
 
@@ -134,7 +157,7 @@ pub fn get_hue_ip() -> Result<String, Box<Error>> {
 fn get_token() -> Result<(String), Box<Error>> {
     match env::home_dir() {
         Some(path) => {
-            let token_file = String::from(path.to_string_lossy()) + "/.token";
+            let token_file = String::from(path.to_string_lossy()) + "/.config/rusty_hue/token";
             let mut f = File::open(token_file)?;
 
             let mut token = String::new();
