@@ -71,24 +71,124 @@ impl XY {
     pub fn xy_string(&self) -> String {
         format!("[{}, {}]", self.x, self.y)
     }
+
+    pub fn adjust_for_gamut(&mut self, gamut: ColorGamut) {
+        let gamut_point = GamutPoint { x: self.x, y: self.y };
+
+        if gamut.point_in_gamut(&gamut_point) {
+            return ();
+        }
+
+        let new_gamut_point = gamut.closest_point(&gamut_point);
+
+        self.x = new_gamut_point.x;
+        self.y = new_gamut_point.y;
+    }
 }
 
-struct GamutPoint {
+pub struct GamutPoint {
     x: f32,
     y: f32,
 }
 
-struct ColorGamut {
+impl GamutPoint {
+    fn sign(&self, p1: &GamutPoint, p2: &GamutPoint) -> bool {
+        (self.x - p2.x) * (p1.y - p2.y) - (p1.x - p2.x) * (self.y - p2.y) < 0.0
+    }
+
+    fn closest_point_on_line(&self, p1: &GamutPoint, p2: &GamutPoint) -> GamutPoint {
+        let mut k = (p2.y - p1.y) * (self.x - p1.x) - (p2.x - p1.x) * (self.y - p1.y);
+        k /= (p2.y - p1.y).powi(2) + (p2.x - p1.x).powi(2);
+
+        let x = self.x - k * (p2.y - p1.y);
+        let y = self.y + k * (p2.x - p1.x);
+
+        GamutPoint { x, y }
+    }
+
+    fn distance_to(&self, p: &GamutPoint) -> f32 {
+        ((self.x - p.x).powi(2) + (self.y - p.y).powi(2)).sqrt()
+    }
+}
+
+pub struct ColorGamut {
     red: GamutPoint,
     green: GamutPoint,
     blue: GamutPoint,
 }
 
-const COLOR_GAMUT_B: ColorGamut = ColorGamut {
+impl ColorGamut {
+    pub fn point_in_gamut(&self, p: &GamutPoint) -> bool {
+        let b1 = p.sign(&self.red, &self.green);
+        let b2 = p.sign(&self.green, &self.blue);
+        let b3 = p.sign(&self.blue, &self.red);
+
+        (b1 == b2) && (b2 == b3)
+    }
+
+    pub fn closest_point(&self, p: &GamutPoint) -> GamutPoint {
+        let proj1 = p.closest_point_on_line(&self.red, &self.green);
+        let proj2 = p.closest_point_on_line(&self.green, &self.blue);
+        let proj3 = p.closest_point_on_line(&self.blue, &self.red);
+
+        let dist1 = p.distance_to(&proj1);
+        let dist2 = p.distance_to(&proj2);
+        let dist3 = p.distance_to(&proj3);
+
+        if dist1 <= dist2 && dist1 <= dist3 {
+            proj1
+        } else if dist2 <= dist3 {
+            proj2
+        } else {
+            proj3
+        }
+    }
+}
+
+pub const COLOR_GAMUT_A: ColorGamut = ColorGamut {
+    red: GamutPoint { x: 0.704, y: 0.296 },
+    green: GamutPoint { x: 0.2151, y: 0.7106 },
+    blue: GamutPoint { x: 0.138, y: 0.08 }
+};
+
+pub const COLOR_GAMUT_B: ColorGamut = ColorGamut {
     red: GamutPoint { x: 0.675, y: 0.322 },
     green: GamutPoint { x: 0.409, y: 0.518 },
     blue: GamutPoint { x: 0.167, y: 0.04 }
 };
+
+pub const COLOR_GAMUT_C: ColorGamut = ColorGamut {
+    red: GamutPoint { x: 0.692, y: 0.308 },
+    green: GamutPoint { x: 0.17, y: 0.07 },
+    blue: GamutPoint { x: 0.153, y: 0.048 }
+};
+
+pub fn color_gamut_lookup(model_id: &str) -> Option<char> {
+    match model_id {
+        "LST001" |
+        "LLC005" |
+        "LLC006" |
+        "LLC007" |
+        "LLC010" |
+        "LLC011" |
+        "LLC012" |
+        "LLC013" |
+        "LLC014" => Some('A'),
+        "LCT001" |
+        "LCT002" |
+        "LCT003" |
+        "LMM001" => Some('B'),
+        "LCT010" |
+        "LCT011" |
+        "LCT014" |
+        "LCT015" |
+        "LCT016" |
+        "LLC020" |
+        "LST002" |
+        "LCT012" => Some('C'),
+        _ => None
+    }
+}
 
 #[cfg(test)]
 mod test {
@@ -119,5 +219,70 @@ mod test {
         assert_eq!(rgb.r, 145);
         assert_eq!(rgb.g, 145);
         assert_eq!(rgb.b, 145);
+    }
+
+    #[test]
+    fn point_in_triangle() {
+        let point = GamutPoint{ x: 3.5, y: 1.5 };
+        let triangle = ColorGamut{
+            red: GamutPoint { x: 4.0, y: 1.0 },
+            green: GamutPoint { x: 5.0, y: 3.0 },
+            blue: GamutPoint { x: 2.0, y: 1.0 }
+        };
+        assert!(triangle.point_in_gamut(&point));
+    }
+
+    #[test]
+    fn point_not_in_triangle() {
+        let point = GamutPoint { x: 1.0, y: 3.0 };
+        let triangle = ColorGamut{
+            red: GamutPoint { x: 4.0, y: 1.0 },
+            green: GamutPoint { x: 5.0, y: 3.0 },
+            blue: GamutPoint { x: 2.0, y: 1.0 }
+        };
+        assert!(!triangle.point_in_gamut(&point));
+    }
+
+    #[test]
+    fn closest_point_on_line() {
+        let p1 = GamutPoint { x: 1.0, y: 2.0 };
+        let p2 = GamutPoint { x: 2.0, y: 1.0 };
+        let p3 = GamutPoint { x: 2.0, y: 3.0 };
+
+        let new_point = p1.closest_point_on_line(&p2, &p3);
+
+        assert_eq!(new_point.x, 2.0);
+        assert_eq!(new_point.y, 2.0);
+    }
+
+    #[test]
+    fn distance_between_points() {
+        let p1 = GamutPoint { x: 1.0, y: 2.0 };
+        let p2 = GamutPoint { x: 2.0, y: 2.0 };
+
+        assert_eq!(p1.distance_to(&p2), 1.0);
+    }
+
+    #[test]
+    fn closest_point_on_triangle() {
+        let p = GamutPoint { x: 1.0, y: 2.0 };
+        let triangle = ColorGamut {
+            red: GamutPoint { x: 2.0, y: 1.0 },
+            green: GamutPoint { x: 2.0, y: 3.0 },
+            blue: GamutPoint { x: 3.0, y: 2.0 }
+        };
+
+        let new_point = triangle.closest_point(&p);
+
+        assert_eq!(new_point.x, 2.0);
+        assert_eq!(new_point.y, 2.0);
+    }
+
+    #[test]
+    fn gamut_lookup() {
+        assert_eq!(color_gamut_lookup("LLC007"), Some('A'));
+        assert_eq!(color_gamut_lookup("LCT003"), Some('B'));
+        assert_eq!(color_gamut_lookup("LST002"), Some('C'));
+        assert_eq!(color_gamut_lookup("WRONG"), None);
     }
 }
