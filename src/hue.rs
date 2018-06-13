@@ -80,8 +80,8 @@ impl Hue {
         Ok(())
     }
 
-    fn power(&mut self, power: bool) -> Result<(), Box<Error>> {
-        for (index, light) in self.lights.iter_mut() {
+    fn power(&self, power: bool) -> Result<(), Box<Error>> {
+        for (index, light) in &self.lights {
             if light.state.reachable && light.state.on != power {
                 let body = format!("{{\"on\":{}}}", power);
                 let client = reqwest::Client::new();
@@ -93,47 +93,7 @@ impl Hue {
         Ok(())
     }
 
-    pub fn toggle_lights(&mut self) -> Result<(), Box<Error>> {
-        let mut all_off = true;
-
-        for (_, light) in self.lights.iter_mut() {
-            if light.state.reachable && light.state.on {
-                all_off = false;
-                break;
-            }
-        }
-
-        if all_off {
-            self.power(all_off)
-        } else {
-            self.power(all_off)
-        }
-    }
-
-    pub fn print_info(&mut self) {
-        for (index, light) in self.lights.iter_mut() {
-            println!("Light {}:", index);
-            println!("\tName: {}", light.name);
-            println!("\tType: {}", light.light_type);
-            println!("\tModel ID: {}", light.modelid);
-            println!("\tManufacturer: {}", light.manufacturername);
-            println!("\tUnique ID: {}", light.uniqueid);
-            println!("\tSoftware Version: {}", light.swversion);
-            println!("\tState:");
-            println!("\t\tOn: {}", light.state.on);
-            println!("\t\tBrightness: {}", light.state.bri);
-            println!("\t\tHue: {}", light.state.hue);
-            println!("\t\tSaturation: {}", light.state.sat);
-            println!("\t\tEffect: {}", light.state.effect);
-            println!("\t\tx: {}\ty: {}", light.state.xy[0], light.state.xy[1]);
-            println!("\t\tColor Temperature: {}", light.state.ct);
-            println!("\t\tAlert: {}", light.state.alert);
-            println!("\t\tColor Mode: {}", light.state.colormode);
-            println!("\t\tReachable: {}", light.state.reachable);
-        }
-    }
-
-    pub fn set_color_by_index_and_rgb(&self, index: &str, rgb: &colors::RGB) -> Result<(), Box<Error>> {
+    fn set_color_by_index_and_rgb(&self, index: &str, rgb: &colors::RGB) -> Result<(), Box<Error>> {
         if !self.lights.contains_key(index) {
             return Err(From::from(format!("Light index '{}' does not exist.", index)));
         }
@@ -157,6 +117,46 @@ impl Hue {
         Ok(())
     }
 
+    pub fn toggle_lights(&self) -> Result<(), Box<Error>> {
+        let mut all_off = true;
+
+        for (_, light) in &self.lights {
+            if light.state.reachable && light.state.on {
+                all_off = false;
+                break;
+            }
+        }
+
+        if all_off {
+            self.power(all_off)
+        } else {
+            self.power(all_off)
+        }
+    }
+
+    pub fn print_info(&self) {
+        for (index, light) in &self.lights {
+            println!("Light {}:", index);
+            println!("\tName: {}", light.name);
+            println!("\tType: {}", light.light_type);
+            println!("\tModel ID: {}", light.modelid);
+            println!("\tManufacturer: {}", light.manufacturername);
+            println!("\tUnique ID: {}", light.uniqueid);
+            println!("\tSoftware Version: {}", light.swversion);
+            println!("\tState:");
+            println!("\t\tOn: {}", light.state.on);
+            println!("\t\tBrightness: {}", light.state.bri);
+            println!("\t\tHue: {}", light.state.hue);
+            println!("\t\tSaturation: {}", light.state.sat);
+            println!("\t\tEffect: {}", light.state.effect);
+            println!("\t\tx: {}\ty: {}", light.state.xy[0], light.state.xy[1]);
+            println!("\t\tColor Temperature: {}", light.state.ct);
+            println!("\t\tAlert: {}", light.state.alert);
+            println!("\t\tColor Mode: {}", light.state.colormode);
+            println!("\t\tReachable: {}", light.state.reachable);
+        }
+    }
+
     pub fn set_color_by_index_and_color(&self, index: &str, color: &str) -> Result<(), Box<Error>> {
         if !self.lights.contains_key(index) {
             return Err(From::from(format!("Light index '{}' does not exist.", index)));
@@ -171,6 +171,20 @@ impl Hue {
 
         self.set_color_by_index_and_rgb(index, rgb)?;
 
+        Ok(())
+    }
+
+    pub fn set_color_by_name_and_color(&self, name: &str, color: &str) -> Result<(), Box<Error>> {
+
+        Ok(())
+    }
+
+    pub fn set_all_by_color(&self, color: &str) -> Result<(), Box<Error>> {
+        for (index, light) in &self.lights {
+            if light.state.reachable {
+                self.set_color_by_index_and_color(index, color);
+            }
+        }
         Ok(())
     }
 }
