@@ -14,7 +14,7 @@ pub struct RGB {
 }
 
 impl RGB {
-    pub fn from_xy(xy: XY) -> RGB {
+    pub fn from_xy(xy: &XY) -> RGB {
         let z = 1.0 - xy.x - xy.y;
         let brightness = xy.brightness as f32;
         let x = brightness / xy.y * xy.x;
@@ -49,7 +49,7 @@ pub struct XY {
 }
 
 impl XY {
-    pub fn from_rgb(rgb: RGB) -> XY {
+    pub fn from_rgb(rgb: &RGB) -> XY {
         let mut rgb = [rgb.r as f32, rgb.g as f32, rgb.b as f32];
 
         // Apply gamma correction
@@ -223,14 +223,14 @@ mod test {
     #[test]
     fn rgb_to_xy() {
         let rgb  = RGB { r: 100, g: 100 , b: 100 };
-        let xy = XY::from_rgb(rgb);
+        let xy = XY::from_rgb(&rgb);
 
         assert_eq!(xy.x, 0.32272673);
         assert_eq!(xy.y, 0.32902290);
         assert_eq!(xy.brightness, 35);
 
         let rgb = RGB { r: 100, g: 10 , b: 100 };
-        let xy = XY::from_rgb(rgb);
+        let xy = XY::from_rgb(&rgb);
 
         assert_eq!(xy.x, 0.38354447);
         assert_eq!(xy.y, 0.15998589);
@@ -240,7 +240,7 @@ mod test {
     #[test]
     fn xy_to_rgb() {
         let xy = XY { x: 0.32272673, y: 0.32902290, brightness: 35 };
-        let rgb = RGB::from_xy(xy);
+        let rgb = RGB::from_xy(&xy);
 
         assert_eq!(rgb.r, 145);
         assert_eq!(rgb.g, 145);
