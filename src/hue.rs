@@ -1,11 +1,11 @@
+use reqwest;
+use serde_json;
 use serde_json::Value;
+use std::collections::HashMap;
 use std::env;
 use std::error::Error;
 use std::fs::File;
 use std::io::prelude::*;
-use std::collections::HashMap;
-use serde_json;
-use reqwest;
 
 use colors;
 
