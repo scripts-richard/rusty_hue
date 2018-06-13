@@ -1,3 +1,12 @@
+use serde_json;
+use std::collections::HashMap;
+use std::env;
+use std::error::Error;
+use std::fs::File;
+use std::io::prelude::*;
+
+#[derive(Debug)]
+#[derive(Serialize, Deserialize)]
 pub struct RGB {
     pub r: u8,
     pub g: u8,
@@ -190,6 +199,23 @@ pub fn color_gamut_lookup(model_id: &str) -> Option<char> {
     }
 }
 
+pub fn load_colors_from_file() -> Result<HashMap<String, RGB>, Box<Error>> {
+    match env::home_dir() {
+        Some(path) => {
+            let colors_file = String::from(path.to_string_lossy()) + "/.config/rusty_hue/colors.json";
+            let mut f = File::open(colors_file)?;
+
+            let mut contents = String::new();
+            f.read_to_string(&mut contents)?;
+
+            let colors: HashMap<String, RGB> = serde_json::from_str(&contents)?;
+
+            return Ok(colors);
+        }
+        None => Err(From::from("Failed to get home directory."))
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -274,7 +300,7 @@ mod test {
 
         let new_point = triangle.closest_point(&p);
 
-        assert_eq!(new_point.x, 2.0);
+        assert_eq!(new_point.x, 2.0);//use serde_json::Value;
         assert_eq!(new_point.y, 2.0);
     }
 
@@ -284,5 +310,13 @@ mod test {
         assert_eq!(color_gamut_lookup("LCT003"), Some('B'));
         assert_eq!(color_gamut_lookup("LST002"), Some('C'));
         assert_eq!(color_gamut_lookup("WRONG"), None);
+    }
+
+    #[test]
+    fn load_colors_file() {
+        let colors = load_colors_from_file();
+        assert!(colors.is_ok());
+        let colors = colors.unwrap();
+        assert_eq!(colors["white"].r, 255);
     }
 }
