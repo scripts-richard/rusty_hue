@@ -110,26 +110,6 @@ impl Hue {
         }
     }
 
-    pub fn set_color_via_rgb(&self, index: &str, rgb: colors::RGB) -> Result<(), Box<Error>> {
-        let mut xy = colors::XY::from_rgb(rgb);
-
-        match colors::color_gamut_lookup(self.lights[index].modelid.as_ref()) {
-            Some('A') => xy.adjust_for_gamut(colors::COLOR_GAMUT_A),
-            Some('B') => xy.adjust_for_gamut(colors::COLOR_GAMUT_B),
-            Some('C') => xy.adjust_for_gamut(colors::COLOR_GAMUT_C),
-            Some(_) | None => ()
-        }
-
-
-        let url = format!("{}/{}/state", self.base_address, index);
-        let body = format!("{{\"bri\": {}, \"xy\": {} }}", xy.brightness, xy.xy_string());
-
-        let client = reqwest::Client::new();
-        client.put(&url).body(body).send()?;
-
-        Ok(())
-    }
-
     pub fn print_info(&mut self) {
         for (index, light) in self.lights.iter_mut() {
             println!("Light {}:", index);
@@ -151,6 +131,47 @@ impl Hue {
             println!("\t\tColor Mode: {}", light.state.colormode);
             println!("\t\tReachable: {}", light.state.reachable);
         }
+    }
+
+    pub fn set_color_by_index_and_rgb(&self, index: &str, rgb: &colors::RGB) -> Result<(), Box<Error>> {
+        if !self.lights.contains_key(index) {
+            return Err(From::from(format!("Light index '{}' does not exist.", index)));
+        }
+
+        let mut xy = colors::XY::from_rgb(rgb);
+
+        match colors::color_gamut_lookup(self.lights[index].modelid.as_ref()) {
+            Some('A') => xy.adjust_for_gamut(colors::COLOR_GAMUT_A),
+            Some('B') => xy.adjust_for_gamut(colors::COLOR_GAMUT_B),
+            Some('C') => xy.adjust_for_gamut(colors::COLOR_GAMUT_C),
+            Some(_) | None => ()
+        }
+
+
+        let url = format!("{}/{}/state", self.base_address, index);
+        let body = format!("{{\"bri\": {}, \"xy\": {} }}", xy.brightness, xy.xy_string());
+
+        let client = reqwest::Client::new();
+        client.put(&url).body(body).send()?;
+
+        Ok(())
+    }
+
+    pub fn set_color_by_index_and_color(&self, index: &str, color: &str) -> Result<(), Box<Error>> {
+        if !self.lights.contains_key(index) {
+            return Err(From::from(format!("Light index '{}' does not exist.", index)));
+        }
+
+        let colors = colors::load_colors_from_file()?;
+        if !colors.contains_key(color) {
+            return Err(From::from(format!("Color value '{}' not set.", color)));
+        }
+
+        let rgb = &colors[color];
+
+        self.set_color_by_index_and_rgb(index, rgb)?;
+
+        Ok(())
     }
 }
 
