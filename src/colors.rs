@@ -1,3 +1,7 @@
+//! # colors
+//!
+//! Collection of data structures, functions, and methods for working with the Philips Hue color space.
+
 use serde_json;
 use std::collections::HashMap;
 use std::env;
@@ -5,6 +9,7 @@ use std::error::Error;
 use std::fs::File;
 use std::io::prelude::*;
 
+/// Simple structure to represent a 24 bit RGB color.
 #[derive(Debug)]
 #[derive(Serialize, Deserialize)]
 pub struct RGB {
@@ -14,6 +19,18 @@ pub struct RGB {
 }
 
 impl RGB {
+    /// Create an RGB data structure from an XY data structure.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use rusty_hue::colors;
+    ///
+    /// let xy = colors::XY { x: 0.32272673, y: 0.32902290, brightness: 35 };
+    /// let rgb = colors::RGB::from_xy(&xy);
+    ///
+    /// assert_eq!(rgb.r, 145);
+    /// ```
     pub fn from_xy(xy: &XY) -> RGB {
         let z = 1.0 - xy.x - xy.y;
         let brightness = xy.brightness as f32;
@@ -42,6 +59,8 @@ impl RGB {
     }
 }
 
+
+/// Structure to represent a color in a 2D color gamut.
 pub struct XY {
     pub x: f32,
     pub y: f32,
@@ -49,6 +68,19 @@ pub struct XY {
 }
 
 impl XY {
+    /// Create an XY data structure from an RGB data structure.
+    ///
+    /// # Example
+    ///
+    ///
+    /// ```
+    /// use rusty_hue::colors;
+    ///
+    /// let rgb  = colors::RGB { r: 100, g: 100 , b: 100 };
+    /// let xy = colors::XY::from_rgb(&rgb);
+    ///
+    /// assert_eq!(xy.x, 0.32272673);
+    /// ```
     pub fn from_rgb(rgb: &RGB) -> XY {
         let mut rgb = [rgb.r as f32, rgb.g as f32, rgb.b as f32];
 
@@ -77,10 +109,13 @@ impl XY {
         XY{ x: x / (x + y + z), y: y / (x + y + z), brightness: brightness }
     }
 
+    /// Generate string from XY structure with teh form: "[<x>, <y>]"."
     pub fn xy_string(&self) -> String {
         format!("[{}, {}]", self.x, self.y)
     }
 
+    /// Given a specific color gamut, check if the current (x, y) coordinates are in the gamut and,
+    /// if not, find and move them to the closest point in the gamut.
     pub fn adjust_for_gamut(&mut self, gamut: ColorGamut) {
         let gamut_point = GamutPoint { x: self.x, y: self.y };
 
@@ -95,16 +130,19 @@ impl XY {
     }
 }
 
+/// Stores the x, y coordinates of a color point in a gamut.
 pub struct GamutPoint {
     x: f32,
     y: f32,
 }
 
 impl GamutPoint {
+    /// Helper function for determining if a point is inside a triangle.
     fn sign(&self, p1: &GamutPoint, p2: &GamutPoint) -> bool {
         (self.x - p2.x) * (p1.y - p2.y) - (p1.x - p2.x) * (self.y - p2.y) < 0.0
     }
 
+    /// Helper function to find the closest point on a line between that line and another point.
     fn closest_point_on_line(&self, p1: &GamutPoint, p2: &GamutPoint) -> GamutPoint {
         let mut k = (p2.y - p1.y) * (self.x - p1.x) - (p2.x - p1.x) * (self.y - p1.y);
         k /= (p2.y - p1.y).powi(2) + (p2.x - p1.x).powi(2);
@@ -115,11 +153,13 @@ impl GamutPoint {
         GamutPoint { x, y }
     }
 
+    /// Helper function for finding the distance between 2 points.
     fn distance_to(&self, p: &GamutPoint) -> f32 {
         ((self.x - p.x).powi(2) + (self.y - p.y).powi(2)).sqrt()
     }
 }
 
+/// Stores the vertices of a color gamut; forms a triangle.
 pub struct ColorGamut {
     red: GamutPoint,
     green: GamutPoint,
@@ -127,6 +167,7 @@ pub struct ColorGamut {
 }
 
 impl ColorGamut {
+    /// Determines if a point is within a color gamut.
     pub fn point_in_gamut(&self, p: &GamutPoint) -> bool {
         let b1 = p.sign(&self.red, &self.green);
         let b2 = p.sign(&self.green, &self.blue);
@@ -135,6 +176,8 @@ impl ColorGamut {
         (b1 == b2) && (b2 == b3)
     }
 
+    /// Finds the closest point on an edge of a triangle between the triangle edges and a given
+    /// point.
     pub fn closest_point(&self, p: &GamutPoint) -> GamutPoint {
         let proj1 = p.closest_point_on_line(&self.red, &self.green);
         let proj2 = p.closest_point_on_line(&self.green, &self.blue);
@@ -154,24 +197,28 @@ impl ColorGamut {
     }
 }
 
+/// Philips Hue Color Gamut A.
 pub const COLOR_GAMUT_A: ColorGamut = ColorGamut {
     red: GamutPoint { x: 0.704, y: 0.296 },
     green: GamutPoint { x: 0.2151, y: 0.7106 },
     blue: GamutPoint { x: 0.138, y: 0.08 }
 };
 
+/// Philips Hue Color Gamut B.
 pub const COLOR_GAMUT_B: ColorGamut = ColorGamut {
     red: GamutPoint { x: 0.675, y: 0.322 },
     green: GamutPoint { x: 0.409, y: 0.518 },
     blue: GamutPoint { x: 0.167, y: 0.04 }
 };
 
+/// Philips Hue Color Gamut C.
 pub const COLOR_GAMUT_C: ColorGamut = ColorGamut {
     red: GamutPoint { x: 0.692, y: 0.308 },
     green: GamutPoint { x: 0.17, y: 0.07 },
     blue: GamutPoint { x: 0.153, y: 0.048 }
 };
 
+/// Given a philips hue model ID, returns the character (i.e. 'A') for is color gamut.
 pub fn color_gamut_lookup(model_id: &str) -> Option<char> {
     match model_id {
         "LST001" |
@@ -199,6 +246,7 @@ pub fn color_gamut_lookup(model_id: &str) -> Option<char> {
     }
 }
 
+/// Loads preconfigured colors from a JSON file in $HOME/.config/rusty_hue/colors.json.
 pub fn load_colors_from_file() -> Result<HashMap<String, RGB>, Box<Error>> {
     match env::home_dir() {
         Some(path) => {
