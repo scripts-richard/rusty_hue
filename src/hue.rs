@@ -1,3 +1,7 @@
+//! # hue
+//!
+//! Collection of data structures, functions, and methods for iteracting with Philips Hue lights.
+
 use reqwest;
 use serde_json;
 use serde_json::Value;
@@ -9,6 +13,7 @@ use std::io::prelude::*;
 
 use colors;
 
+/// Represents the state field of a light. Matches the JSON data fields to allow for serialization.
 #[derive(Debug)]
 #[derive(Serialize, Deserialize)]
 pub struct LightState {
@@ -24,7 +29,8 @@ pub struct LightState {
     reachable: bool,
 }
 
-
+/// Represents a single light. Matches the JSON data fields to allow for serialization. Note: type
+/// is a rust keyword and must be changed to light_type before use of the data structure.
 #[derive(Debug)]
 #[derive(Serialize, Deserialize)]
 pub struct Light {
@@ -37,7 +43,7 @@ pub struct Light {
     swversion: String,
 }
 
-
+/// Represents a Hue system.
 #[derive(Debug)]
 pub struct Hue {
     ip: String,
@@ -48,6 +54,8 @@ pub struct Hue {
 
 
 impl Hue {
+    /// Finds the IP and lights of a Hue system and returns them in a Hue data structure. Requires
+    /// an API token.
     pub fn new() -> Result<Hue, Box<Error>> {
         let ip = get_hue_ip()?;
         let token = get_token()?;
@@ -65,6 +73,8 @@ impl Hue {
         Ok(hue)
     }
 
+    /// Helper function to get the Hue lights, deserialize them into data structures, and add them
+    /// to a Hue data structure.
     fn get_lights(&mut self) -> Result<(), Box<Error>> {
         let body = reqwest::get(&self.base_address)?.text()?;
         let json: Value = serde_json::from_str(&body)?;
@@ -80,6 +90,7 @@ impl Hue {
         Ok(())
     }
 
+    /// Helper function for setting all lights to the same power state.
     fn power(&self, power: bool) -> Result<(), Box<Error>> {
         for (index, light) in &self.lights {
             if light.state.reachable && light.state.on != power {
@@ -93,6 +104,7 @@ impl Hue {
         Ok(())
     }
 
+    /// Helper function for setting the color value by RGB for a single light given its index.
     fn set_color_by_index_and_rgb(&self, index: &str, rgb: &colors::RGB) -> Result<(), Box<Error>> {
         if !self.lights.contains_key(index) {
             return Err(From::from(format!("Light index '{}' does not exist.", index)));
@@ -117,6 +129,8 @@ impl Hue {
         Ok(())
     }
 
+    /// Toggles all lights such that they have the same power state. If one light is on, will turn
+    /// it off. If all lights aer off, will turn them all on.
     pub fn toggle_lights(&self) -> Result<(), Box<Error>> {
         let mut all_off = true;
 
@@ -134,6 +148,7 @@ impl Hue {
         }
     }
 
+    /// Prints all fields of a Light and LightState structure in an easily readble format.
     pub fn print_info(&self) {
         for (index, light) in &self.lights {
             println!("Light {}:", index);
@@ -157,6 +172,7 @@ impl Hue {
         }
     }
 
+    /// Given the index of a light and RGB color, will set the color of that light.
     pub fn set_color_by_index_and_color(&self, index: &str, color: &str) -> Result<(), Box<Error>> {
         if !self.lights.contains_key(index) {
             return Err(From::from(format!("Light index '{}' does not exist.", index)));
@@ -174,22 +190,36 @@ impl Hue {
         Ok(())
     }
 
+    /// Given the name of a light and RGB color, will set the color of that light.
     pub fn set_color_by_name_and_color(&self, name: &str, color: &str) -> Result<(), Box<Error>> {
+        let mut found = false;
+
+        for (index, light) in &self.lights {
+            if light.name == name {
+                self.set_color_by_index_and_color(index, color)?;
+                found = true;
+            }
+        }
+
+        if !found {
+            return Err(From::from(format!("No light with name '{}' found.", name)));
+        }
 
         Ok(())
     }
 
+    /// Sets the color of all lights to the given RGB color.
     pub fn set_all_by_color(&self, color: &str) -> Result<(), Box<Error>> {
         for (index, light) in &self.lights {
             if light.state.reachable {
-                self.set_color_by_index_and_color(index, color);
+                self.set_color_by_index_and_color(index, color)?;
             }
         }
         Ok(())
     }
 }
 
-
+/// Uses the meethue.com/api/nupnp to retreive the IP of the hue bridge.
 pub fn get_hue_ip() -> Result<String, Box<Error>> {
     let body = reqwest::get("https://www.meethue.com/api/nupnp")?.text()?;
     let json: Value = serde_json::from_str(&body)?;
@@ -197,7 +227,7 @@ pub fn get_hue_ip() -> Result<String, Box<Error>> {
     Ok(json[0]["internalipaddress"].to_string().replace("\"", ""))
 }
 
-
+/// Loads the API token from $HOME/.config/rusty_hue/token.
 fn get_token() -> Result<(String), Box<Error>> {
     match env::home_dir() {
         Some(path) => {
