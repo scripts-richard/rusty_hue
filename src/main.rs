@@ -76,8 +76,8 @@ fn main() {
             hue.set_color_by_index_and_color(i, c).unwrap();
         },
 
-        (Some(_), Some(_), None) => (),
+        (Some(_), Some(_), None) => println!("Incompatible arguments!"),
 
-        (Some(i), Some(n), Some(c)) => println!("Index: {}, name: {}, color: {}", i, n, c)
+        (Some(_), Some(_), Some(_)) => println!("Incompatible arguments!")
     }
 }
