@@ -91,7 +91,7 @@ impl Hue {
     }
 
     /// Helper function for setting all lights to the same power state.
-    fn power(&self, power: bool) -> Result<(), Box<Error>> {
+    fn power_all(&self, power: bool) -> Result<bool, Box<Error>> {
         for (index, light) in &self.lights {
             if light.state.reachable && light.state.on != power {
                 let body = format!("{{\"on\":{}}}", power);
@@ -101,13 +101,17 @@ impl Hue {
                 client.put(&url).body(body).send()?;
             }
         }
-        Ok(())
+        Ok(power)
     }
 
     /// Helper function for setting the color value by RGB for a single light given its index.
     fn set_color_by_index_and_rgb(&self, index: &str, rgb: &colors::RGB) -> Result<(), Box<Error>> {
         if !self.lights.contains_key(index) {
-            return Err(From::from(format!("Light index '{}' does not exist.", index)));
+            return Err(From::from(format!("Light index: {} does not exist.", index)));
+        }
+
+        if !self.lights[index].state.reachable {
+            return Err(From::from(format!("Light at index: {} is not reachable.", index)));
         }
 
         let mut xy = colors::XY::from_rgb(rgb);
@@ -131,7 +135,7 @@ impl Hue {
 
     /// Toggles all lights such that they have the same power state. If one light is on, will turn
     /// it off. If all lights aer off, will turn them all on.
-    pub fn toggle_lights(&self) -> Result<(), Box<Error>> {
+    pub fn toggle_lights(&self) -> Result<bool, Box<Error>> {
         let mut all_off = true;
 
         for (_, light) in &self.lights {
@@ -142,10 +146,37 @@ impl Hue {
         }
 
         if all_off {
-            self.power(all_off)
+            self.power_all(all_off)
         } else {
-            self.power(all_off)
+            self.power_all(all_off)
         }
+    }
+
+    // Toggle (on/off) a single light by its index.
+    pub fn toggle_by_index(&self, index: &str) -> Result<bool, Box<Error>> {
+        let power = !self.lights[index].state.on;
+
+        if self.lights[index].state.reachable {
+            let body = format!("{{\"on\":{}}}", power);
+            let client = reqwest::Client::new();
+            let url = format!("{}/{}/state", self.base_address, index);
+
+            client.put(&url).body(body).send()?;
+        } else {
+            return Err(From::from(format!("Light at index: {} is not reachable.", index)));
+        }
+
+        Ok(power)
+    }
+
+    // Toggle (on/off) a single light by its name.
+    pub fn toggle_by_name(&self, name: &str) -> Result<bool, Box<Error>> {
+        for (index, light) in &self.lights {
+            if light.name == name {
+                return self.toggle_by_index(index);
+            }
+        }
+        Err(From::from(format!("No light with name '{}' found.", name)))
     }
 
     /// Prints all fields of a Light and LightState structure in an easily readble format.
@@ -192,20 +223,13 @@ impl Hue {
 
     /// Given the name of a light and RGB color, will set the color of that light.
     pub fn set_color_by_name_and_color(&self, name: &str, color: &str) -> Result<(), Box<Error>> {
-        let mut found = false;
-
         for (index, light) in &self.lights {
             if light.name == name {
-                self.set_color_by_index_and_color(index, color)?;
-                found = true;
+                return self.set_color_by_index_and_color(index, color);
             }
         }
 
-        if !found {
-            return Err(From::from(format!("No light with name '{}' found.", name)));
-        }
-
-        Ok(())
+        Err(From::from(format!("No light with name '{}' found.", name)))
     }
 
     /// Sets the color of all lights to the given RGB color.
