@@ -37,33 +37,28 @@ fn main() {
     match matches.subcommand_name() {
         Some("color") => {
             if let Some(matches) = matches.subcommand_matches("color") {
-                let color = matches.value_of("COLOR");
+                if let Some(color) = matches.value_of("COLOR") {
+                    match (index, name) {
+                        (None, None) => {
+                            println!("Setting all lights to {}...", color);
+                            hue.set_all_by_color(color).unwrap();
+                        },
+                        (None, Some(name)) => {
+                            println!("Setting light '{}' to {}...", name, color);
+                            hue.set_color_by_name_and_color(name, color).unwrap();
+                        },
+                        (Some(index), None) => {
+                            println!("Setting light at index: {} to {}", index, color);
+                            hue.set_color_by_index_and_color(index, color).unwrap();
+                        },
+                        (Some(index), Some(name)) => {
+                            println!("Setting light at index: {} to {}", index, color);
+                            hue.set_color_by_index_and_color(index, color).unwrap();
 
-                match color {
-                    Some(color) => {
-                        match (index, name) {
-                            (None, None) => {
-                                println!("Setting all lights to {}...", color);
-                                hue.set_all_by_color(color).unwrap();
-                            },
-                            (None, Some(name)) => {
-                                println!("Setting light '{}' to {}...", name, color);
-                                hue.set_color_by_name_and_color(name, color).unwrap();
-                            },
-                            (Some(index), None) => {
-                                println!("Setting light at index: {} to {}", index, color);
-                                hue.set_color_by_index_and_color(index, color).unwrap();
-                            },
-                            (Some(index), Some(name)) => {
-                                println!("Setting light at index: {} to {}", index, color);
-                                hue.set_color_by_index_and_color(index, color).unwrap();
-
-                                println!("Setting light '{}' to {}...", name, color);
-                                hue.set_color_by_name_and_color(name, color).unwrap();
-                            },
-                        }
-                    },
-                    _ => ()
+                            println!("Setting light '{}' to {}...", name, color);
+                            hue.set_color_by_name_and_color(name, color).unwrap();
+                        },
+                    }
                 }
             }
             return;
