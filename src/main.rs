@@ -17,21 +17,43 @@ fn main() {
             (about: "Displays information about Hue lights.")
             (version: "0.1")
         )
+        (@subcommand rename =>
+            (about: "Change a light's configuration")
+            (version: "0.1")
+            (@arg INDEX: +required "Index of light to set value.")
+            (@arg NAME: +required "New name value for light.")
+        )
     ).get_matches();
 
     let hue = Hue::new().unwrap();
-
-    let index = matches.value_of("index");
-    let name = matches.value_of("name");
-    let color = matches.value_of("color");
 
     match matches.subcommand_name() {
         Some("info") => {
             hue.print_info();
             return;
         },
+
+        Some("rename") => {
+            if let Some(matches) = matches.subcommand_matches("rename") {
+                let index = matches.value_of("INDEX");
+                let name = matches.value_of("NAME");
+
+                match (index, name) {
+                    (Some(index), Some(name)) => {
+                        hue.rename_light(index, name).unwrap();
+                    },
+                    _ => () // Any other condition besides the above will be caught by the arg parser.
+                }
+            }
+            return;
+        },
+
         _ => ()
     }
+
+    let index = matches.value_of("index");
+    let name = matches.value_of("name");
+    let color = matches.value_of("color");
 
     match (index, name, color) {
         (None, None, None) => {
@@ -43,37 +65,37 @@ fn main() {
             }
         },
 
-        (None, None, Some(c)) => {
-            println!("Setting all lights to {}...", c);
-            hue.set_all_by_color(c).unwrap();
+        (None, None, Some(color)) => {
+            println!("Setting all lights to {}...", color);
+            hue.set_all_by_color(color).unwrap();
         },
 
-        (None, Some(n), None) => {
-            println!("Toggling light '{}'...", n);
-            if hue.toggle_by_name(n).unwrap() {
-                println!("Light '{}' has been powered on.", n);
+        (None, Some(name), None) => {
+            println!("Toggling light '{}'...", name);
+            if hue.toggle_by_name(name).unwrap() {
+                println!("Light '{}' has been powered on.", name);
             } else {
-                println!("Light '{}' has been powered off.", n);
+                println!("Light '{}' has been powered off.", name);
             }
         },
 
-        (None, Some(n), Some(c)) => {
-            println!("Setting light '{}' to {}...", n, c);
-            hue.set_color_by_name_and_color(n, c).unwrap();
+        (None, Some(name), Some(color)) => {
+            println!("Setting light '{}' to {}...", name, color);
+            hue.set_color_by_name_and_color(name, color).unwrap();
         },
 
-        (Some(i), None, None) => {
-            println!("Toggling light at index: {}...", i);
-            if hue.toggle_by_index(i).unwrap() {
-                println!("Light at index: {} powered on.", i);
+        (Some(index), None, None) => {
+            println!("Toggling light at index: {}...", index);
+            if hue.toggle_by_index(index).unwrap() {
+                println!("Light at index: {} powered on.", index);
             } else {
-                println!("Light at index: {} powered off.", i);
+                println!("Light at index: {} powered off.", index);
             }
         },
 
-        (Some(i), None, Some(c)) => {
-            println!("Setting light at index: {} to {}", i, c);
-            hue.set_color_by_index_and_color(i, c).unwrap();
+        (Some(index), None, Some(color)) => {
+            println!("Setting light at index: {} to {}", index, color);
+            hue.set_color_by_index_and_color(index, color).unwrap();
         },
 
         (Some(_), Some(_), None) => println!("Incompatible arguments!"),

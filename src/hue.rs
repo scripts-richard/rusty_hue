@@ -152,7 +152,7 @@ impl Hue {
         }
     }
 
-    // Toggle (on/off) a single light by its index.
+    /// Toggle (on/off) a single light by its index.
     pub fn toggle_by_index(&self, index: &str) -> Result<bool, Box<Error>> {
         let power = !self.lights[index].state.on;
 
@@ -169,7 +169,7 @@ impl Hue {
         Ok(power)
     }
 
-    // Toggle (on/off) a single light by its name.
+    /// Toggle (on/off) a single light by its name.
     pub fn toggle_by_name(&self, name: &str) -> Result<bool, Box<Error>> {
         for (index, light) in &self.lights {
             if light.name == name {
@@ -181,6 +181,7 @@ impl Hue {
 
     /// Prints all fields of a Light and LightState structure in an easily readble format.
     pub fn print_info(&self) {
+        println!("IP address: {}", self.ip);
         for (index, light) in &self.lights {
             println!("Light {}:", index);
             println!("\tName: {}", light.name);
@@ -239,6 +240,21 @@ impl Hue {
                 self.set_color_by_index_and_color(index, color)?;
             }
         }
+        Ok(())
+    }
+
+    /// Rename the light with the provided index.
+    pub fn rename_light(&self, index: &str, name: &str) -> Result<(), Box<Error>> {
+        if !self.lights.contains_key(index) {
+            return Err(From::from(format!("Light index '{}' does not exist.", index)));
+        }
+
+        let url = format!("{}/{}", self.base_address, index);
+        let body = format!("{{\"name\": \"{}\"}}", name);
+
+        let client = reqwest::Client::new();
+        client.put(&url).body(body).send()?;
+
         Ok(())
     }
 }
