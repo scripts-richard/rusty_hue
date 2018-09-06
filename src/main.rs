@@ -5,6 +5,98 @@ extern crate rusty_hue;
 use rusty_hue::hue::Hue;
 
 
+fn subcommand_color(hue: &Hue, matches: &clap::ArgMatches) {
+    let index = matches.value_of("index");
+    let name = matches.value_of("name");
+
+    if let Some(matches) = matches.subcommand_matches("color") {
+        if let Some(color) = matches.value_of("COLOR") {
+            match (index, name) {
+                (None, None) => {
+                    println!("Setting all lights to {}...", color);
+                    match hue.set_all_by_color(color) {
+                        Ok(()) => (),
+                        Err(_) => {
+                            println!("No color: {} in configuration file.", color)
+                        }
+                    }
+                },
+                (None, Some(name)) => {
+                    println!("Setting light '{}' to {}...", name, color);
+                    hue.set_color_by_name_and_color(name, color).unwrap();
+                },
+                (Some(index), None) => {
+                    println!("Setting light at index: {} to {}", index, color);
+                    hue.set_color_by_index_and_color(index, color).unwrap();
+                },
+                (Some(index), Some(name)) => {
+                    println!("Setting light at index: {} to {}", index, color);
+                    hue.set_color_by_index_and_color(index, color).unwrap();
+
+                    println!("Setting light '{}' to {}...", name, color);
+                    hue.set_color_by_name_and_color(name, color).unwrap();
+                },
+            }
+        }
+    }
+}
+
+
+fn subcommand_toggle(hue: &Hue, matches: &clap::ArgMatches) {
+    let index = matches.value_of("index");
+    let name = matches.value_of("name");
+
+    match (index, name) {
+        (None, None) => {
+            println!("Toggling lights...");
+            if hue.toggle_lights().unwrap() {
+                println!("Lights have been powered on.");
+            } else {
+                println!("Lights have been powered off.");
+            }
+        },
+        (None, Some(name)) => {
+            println!("Toggling light '{}'...", name);
+            match hue.toggle_by_name(name) {
+                Ok(on) => {
+                    if on {
+                        println!("Light '{}' has been powered on.", name);
+                    } else {
+                        println!("Light '{}' has been powered off.", name);
+                    }
+                },
+                Err(_) => {
+                    println!("No light with name: '{}'", name)
+                },
+            }
+        },
+        (Some(index), None) => {
+            println!("Toggling light at index: {}...", index);
+            if hue.toggle_by_index(index).unwrap() {
+                println!("Light at index: {} powered on.", index);
+            } else {
+                println!("Light at index: {} powered off.", index);
+            }
+        },
+        (Some(index), Some(name)) => {
+            println!("Toggling light at index: {}...", index);
+            if hue.toggle_by_index(index).unwrap() {
+                println!("Light at index: {} powered on.", index);
+            } else {
+                println!("Light at index: {} powered off.", index);
+            }
+
+            println!("Toggling light '{}'...", name);
+            if hue.toggle_by_name(name).unwrap() {
+                println!("Light '{}' has been powered on.", name);
+            } else {
+                println!("Light '{}' has been powered off.", name);
+            }
+        }
+    }
+}
+
+
 fn main() {
     let matches = clap_app!(RustyHue =>
         (version: "0.3")
@@ -31,36 +123,9 @@ fn main() {
 
     let hue = Hue::new().unwrap();
 
-    let index = matches.value_of("index");
-    let name = matches.value_of("name");
-
     match matches.subcommand_name() {
         Some("color") => {
-            if let Some(matches) = matches.subcommand_matches("color") {
-                if let Some(color) = matches.value_of("COLOR") {
-                    match (index, name) {
-                        (None, None) => {
-                            println!("Setting all lights to {}...", color);
-                            hue.set_all_by_color(color).unwrap();
-                        },
-                        (None, Some(name)) => {
-                            println!("Setting light '{}' to {}...", name, color);
-                            hue.set_color_by_name_and_color(name, color).unwrap();
-                        },
-                        (Some(index), None) => {
-                            println!("Setting light at index: {} to {}", index, color);
-                            hue.set_color_by_index_and_color(index, color).unwrap();
-                        },
-                        (Some(index), Some(name)) => {
-                            println!("Setting light at index: {} to {}", index, color);
-                            hue.set_color_by_index_and_color(index, color).unwrap();
-
-                            println!("Setting light '{}' to {}...", name, color);
-                            hue.set_color_by_name_and_color(name, color).unwrap();
-                        },
-                    }
-                }
-            }
+            subcommand_color(&hue, &matches);
             return;
         },
 
@@ -85,47 +150,7 @@ fn main() {
         },
 
         _ => {
-            match (index, name) {
-                (None, None) => {
-                    println!("Toggling lights...");
-                    if hue.toggle_lights().unwrap() {
-                        println!("Lights have been powered on.");
-                    } else {
-                        println!("Lights have been powered off.");
-                    }
-                },
-                (None, Some(name)) => {
-                    println!("Toggling light '{}'...", name);
-                    if hue.toggle_by_name(name).unwrap() {
-                        println!("Light '{}' has been powered on.", name);
-                    } else {
-                        println!("Light '{}' has been powered off.", name);
-                    }
-                },
-                (Some(index), None) => {
-                    println!("Toggling light at index: {}...", index);
-                    if hue.toggle_by_index(index).unwrap() {
-                        println!("Light at index: {} powered on.", index);
-                    } else {
-                        println!("Light at index: {} powered off.", index);
-                    }
-                },
-                (Some(index), Some(name)) => {
-                    println!("Toggling light at index: {}...", index);
-                    if hue.toggle_by_index(index).unwrap() {
-                        println!("Light at index: {} powered on.", index);
-                    } else {
-                        println!("Light at index: {} powered off.", index);
-                    }
-
-                    println!("Toggling light '{}'...", name);
-                    if hue.toggle_by_name(name).unwrap() {
-                        println!("Light '{}' has been powered on.", name);
-                    } else {
-                        println!("Light '{}' has been powered off.", name);
-                    }
-                }
-            }
+            subcommand_toggle(&hue, &matches);
         }
     }
 }
