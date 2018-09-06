@@ -9,9 +9,34 @@ use std::collections::HashMap;
 use std::env;
 use std::error::Error;
 use std::fs::File;
+use std::fmt;
 use std::io::prelude::*;
 
 use colors;
+
+#[derive(Debug)]
+pub enum HueError {
+    IndexError,
+    NameError,
+}
+
+impl fmt::Display for HueError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            HueError::IndexError |
+            HueError::NameError => f.write_str("Notfound"),
+        }
+    }
+}
+
+impl Error for HueError {
+    fn description(&self) -> &str {
+        match *self {
+            HueError::IndexError => "index not found",
+            HueError::NameError => "Name not found",
+        }
+    }
+}
 
 /// Represents the state field of a light. Matches the JSON data fields to allow for serialization.
 #[derive(Debug)]
@@ -163,7 +188,7 @@ impl Hue {
 
             client.put(&url).body(body).send()?;
         } else {
-            return Err(From::from(format!("Light at index: {} is not reachable.", index)));
+            return Err(Box::new(HueError::IndexError));
         }
 
         Ok(power)
@@ -176,7 +201,7 @@ impl Hue {
                 return self.toggle_by_index(index);
             }
         }
-        Err(From::from(format!("No light with name '{}' found.", name)))
+        Err(Box::new(HueError::NameError))
     }
 
     /// Prints all fields of a Light and LightState structure in an easily readble format.
