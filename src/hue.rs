@@ -141,7 +141,7 @@ impl Hue {
 
         let mut xy = colors::XY::from_rgb(rgb);
         if let Some(gamut) = colors::color_gamut_lookup(self.lights[index].modelid.as_ref()) {
-            xy.adjust_for_gamut(gamut);
+            xy.adjust_for_gamut(&gamut);
         }
 
         let url = format!("{}/{}/state", self.base_address, index);

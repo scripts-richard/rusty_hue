@@ -116,7 +116,7 @@ impl XY {
 
     /// Given a specific color gamut, check if the current (x, y) coordinates are in the gamut and,
     /// if not, find and move them to the closest point in the gamut.
-    pub fn adjust_for_gamut(&mut self, gamut: ColorGamut) {
+    pub fn adjust_for_gamut(&mut self, gamut: &ColorGamut) {
         let gamut_point = GamutPoint { x: self.x, y: self.y };
 
         if gamut.point_in_gamut(&gamut_point) {
