@@ -140,14 +140,9 @@ impl Hue {
         }
 
         let mut xy = colors::XY::from_rgb(rgb);
-
-        match colors::color_gamut_lookup(self.lights[index].modelid.as_ref()) {
-            Some('A') => xy.adjust_for_gamut(colors::COLOR_GAMUT_A),
-            Some('B') => xy.adjust_for_gamut(colors::COLOR_GAMUT_B),
-            Some('C') => xy.adjust_for_gamut(colors::COLOR_GAMUT_C),
-            Some(_) | None => ()
+        if let Some(gamut) = colors::color_gamut_lookup(self.lights[index].modelid.as_ref()) {
+            xy.adjust_for_gamut(gamut);
         }
-
 
         let url = format!("{}/{}/state", self.base_address, index);
         let body = format!("{{\"bri\": {}, \"xy\": {} }}", xy.brightness, xy.xy_string());

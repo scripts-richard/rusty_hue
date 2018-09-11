@@ -131,6 +131,8 @@ impl XY {
 }
 
 /// Stores the x, y coordinates of a color point in a gamut.
+#[derive(Debug)]
+#[derive(PartialEq)]
 pub struct GamutPoint {
     x: f32,
     y: f32,
@@ -160,6 +162,8 @@ impl GamutPoint {
 }
 
 /// Stores the vertices of a color gamut; forms a triangle.
+#[derive(Debug)]
+#[derive(PartialEq)]
 pub struct ColorGamut {
     red: GamutPoint,
     green: GamutPoint,
@@ -219,7 +223,7 @@ pub const COLOR_GAMUT_C: ColorGamut = ColorGamut {
 };
 
 /// Given a philips hue model ID, returns the character (i.e. 'A') for is color gamut.
-pub fn color_gamut_lookup(model_id: &str) -> Option<char> {
+pub fn color_gamut_lookup(model_id: &str) -> Option<ColorGamut> {
     match model_id {
         "LST001" |
         "LLC005" |
@@ -229,11 +233,11 @@ pub fn color_gamut_lookup(model_id: &str) -> Option<char> {
         "LLC011" |
         "LLC012" |
         "LLC013" |
-        "LLC014" => Some('A'),
+        "LLC014" => Some(COLOR_GAMUT_A),
         "LCT001" |
         "LCT002" |
         "LCT003" |
-        "LMM001" => Some('B'),
+        "LMM001" => Some(COLOR_GAMUT_B),
         "LCT010" |
         "LCT011" |
         "LCT014" |
@@ -241,7 +245,7 @@ pub fn color_gamut_lookup(model_id: &str) -> Option<char> {
         "LCT016" |
         "LLC020" |
         "LST002" |
-        "LCT012" => Some('C'),
+        "LCT012" => Some(COLOR_GAMUT_C),
         _ => None
     }
 }
@@ -354,9 +358,9 @@ mod test {
 
     #[test]
     fn gamut_lookup() {
-        assert_eq!(color_gamut_lookup("LLC007"), Some('A'));
-        assert_eq!(color_gamut_lookup("LCT003"), Some('B'));
-        assert_eq!(color_gamut_lookup("LST002"), Some('C'));
+        assert_eq!(color_gamut_lookup("LLC007"), Some(COLOR_GAMUT_A));
+        assert_eq!(color_gamut_lookup("LCT003"), Some(COLOR_GAMUT_B));
+        assert_eq!(color_gamut_lookup("LST002"), Some(COLOR_GAMUT_C));
         assert_eq!(color_gamut_lookup("WRONG"), None);
     }
 
