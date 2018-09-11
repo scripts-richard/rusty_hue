@@ -10,8 +10,7 @@ use std::fs::File;
 use std::io::prelude::*;
 
 /// Simple structure to represent a 24 bit RGB color.
-#[derive(Debug)]
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct RGB {
     pub r: u8,
     pub g: u8,
@@ -55,10 +54,13 @@ impl RGB {
             rgb[i] *= 255.0;
         }
 
-        RGB { r: rgb[0] as u8, g: rgb[1] as u8, b: rgb[2] as u8 }
+        RGB {
+            r: rgb[0] as u8,
+            g: rgb[1] as u8,
+            b: rgb[2] as u8,
+        }
     }
 }
-
 
 /// Structure to represent a color in a 2D color gamut.
 pub struct XY {
@@ -106,7 +108,11 @@ impl XY {
 
         let brightness = (y * 254.0) as u8;
 
-        XY{ x: x / (x + y + z), y: y / (x + y + z), brightness: brightness }
+        XY {
+            x: x / (x + y + z),
+            y: y / (x + y + z),
+            brightness: brightness,
+        }
     }
 
     /// Generate string from XY structure with teh form: "[<x>, <y>]"."
@@ -117,7 +123,10 @@ impl XY {
     /// Given a specific color gamut, check if the current (x, y) coordinates are in the gamut and,
     /// if not, find and move them to the closest point in the gamut.
     pub fn adjust_for_gamut(&mut self, gamut: &ColorGamut) {
-        let gamut_point = GamutPoint { x: self.x, y: self.y };
+        let gamut_point = GamutPoint {
+            x: self.x,
+            y: self.y,
+        };
 
         if gamut.point_in_gamut(&gamut_point) {
             return ();
@@ -131,8 +140,7 @@ impl XY {
 }
 
 /// Stores the x, y coordinates of a color point in a gamut.
-#[derive(Debug)]
-#[derive(PartialEq)]
+#[derive(Debug, PartialEq)]
 pub struct GamutPoint {
     x: f32,
     y: f32,
@@ -162,8 +170,7 @@ impl GamutPoint {
 }
 
 /// Stores the vertices of a color gamut; forms a triangle.
-#[derive(Debug)]
-#[derive(PartialEq)]
+#[derive(Debug, PartialEq)]
 pub struct ColorGamut {
     red: GamutPoint,
     green: GamutPoint,
@@ -204,49 +211,37 @@ impl ColorGamut {
 /// Philips Hue Color Gamut A.
 pub const COLOR_GAMUT_A: ColorGamut = ColorGamut {
     red: GamutPoint { x: 0.704, y: 0.296 },
-    green: GamutPoint { x: 0.2151, y: 0.7106 },
-    blue: GamutPoint { x: 0.138, y: 0.08 }
+    green: GamutPoint {
+        x: 0.2151,
+        y: 0.7106,
+    },
+    blue: GamutPoint { x: 0.138, y: 0.08 },
 };
 
 /// Philips Hue Color Gamut B.
 pub const COLOR_GAMUT_B: ColorGamut = ColorGamut {
     red: GamutPoint { x: 0.675, y: 0.322 },
     green: GamutPoint { x: 0.409, y: 0.518 },
-    blue: GamutPoint { x: 0.167, y: 0.04 }
+    blue: GamutPoint { x: 0.167, y: 0.04 },
 };
 
 /// Philips Hue Color Gamut C.
 pub const COLOR_GAMUT_C: ColorGamut = ColorGamut {
     red: GamutPoint { x: 0.692, y: 0.308 },
     green: GamutPoint { x: 0.17, y: 0.07 },
-    blue: GamutPoint { x: 0.153, y: 0.048 }
+    blue: GamutPoint { x: 0.153, y: 0.048 },
 };
 
 /// Given a philips hue model ID, returns the character (i.e. 'A') for is color gamut.
 pub fn color_gamut_lookup(model_id: &str) -> Option<ColorGamut> {
     match model_id {
-        "LST001" |
-        "LLC005" |
-        "LLC006" |
-        "LLC007" |
-        "LLC010" |
-        "LLC011" |
-        "LLC012" |
-        "LLC013" |
-        "LLC014" => Some(COLOR_GAMUT_A),
-        "LCT001" |
-        "LCT002" |
-        "LCT003" |
-        "LMM001" => Some(COLOR_GAMUT_B),
-        "LCT010" |
-        "LCT011" |
-        "LCT014" |
-        "LCT015" |
-        "LCT016" |
-        "LLC020" |
-        "LST002" |
-        "LCT012" => Some(COLOR_GAMUT_C),
-        _ => None
+        "LST001" | "LLC005" | "LLC006" | "LLC007" | "LLC010" | "LLC011" | "LLC012" | "LLC013"
+        | "LLC014" => Some(COLOR_GAMUT_A),
+        "LCT001" | "LCT002" | "LCT003" | "LMM001" => Some(COLOR_GAMUT_B),
+        "LCT010" | "LCT011" | "LCT014" | "LCT015" | "LCT016" | "LLC020" | "LST002" | "LCT012" => {
+            Some(COLOR_GAMUT_C)
+        }
+        _ => None,
     }
 }
 
@@ -254,7 +249,8 @@ pub fn color_gamut_lookup(model_id: &str) -> Option<ColorGamut> {
 pub fn load_colors_from_file() -> Result<HashMap<String, RGB>, Box<Error>> {
     match env::home_dir() {
         Some(path) => {
-            let colors_file = String::from(path.to_string_lossy()) + "/.config/rusty_hue/colors.json";
+            let colors_file =
+                String::from(path.to_string_lossy()) + "/.config/rusty_hue/colors.json";
             let mut f = File::open(colors_file)?;
 
             let mut contents = String::new();
@@ -264,7 +260,7 @@ pub fn load_colors_from_file() -> Result<HashMap<String, RGB>, Box<Error>> {
 
             return Ok(colors);
         }
-        None => Err(From::from("Failed to get home directory."))
+        None => Err(From::from("Failed to get home directory.")),
     }
 }
 
@@ -274,14 +270,22 @@ mod test {
 
     #[test]
     fn rgb_to_xy() {
-        let rgb  = RGB { r: 100, g: 100 , b: 100 };
+        let rgb = RGB {
+            r: 100,
+            g: 100,
+            b: 100,
+        };
         let xy = XY::from_rgb(&rgb);
 
         assert_eq!(xy.x, 0.32272673);
         assert_eq!(xy.y, 0.32902290);
         assert_eq!(xy.brightness, 35);
 
-        let rgb = RGB { r: 100, g: 10 , b: 100 };
+        let rgb = RGB {
+            r: 100,
+            g: 10,
+            b: 100,
+        };
         let xy = XY::from_rgb(&rgb);
 
         assert_eq!(xy.x, 0.38354447);
@@ -291,7 +295,11 @@ mod test {
 
     #[test]
     fn xy_to_rgb() {
-        let xy = XY { x: 0.32272673, y: 0.32902290, brightness: 35 };
+        let xy = XY {
+            x: 0.32272673,
+            y: 0.32902290,
+            brightness: 35,
+        };
         let rgb = RGB::from_xy(&xy);
 
         assert_eq!(rgb.r, 145);
@@ -301,11 +309,11 @@ mod test {
 
     #[test]
     fn point_in_triangle() {
-        let point = GamutPoint{ x: 3.5, y: 1.5 };
-        let triangle = ColorGamut{
+        let point = GamutPoint { x: 3.5, y: 1.5 };
+        let triangle = ColorGamut {
             red: GamutPoint { x: 4.0, y: 1.0 },
             green: GamutPoint { x: 5.0, y: 3.0 },
-            blue: GamutPoint { x: 2.0, y: 1.0 }
+            blue: GamutPoint { x: 2.0, y: 1.0 },
         };
         assert!(triangle.point_in_gamut(&point));
     }
@@ -313,10 +321,10 @@ mod test {
     #[test]
     fn point_not_in_triangle() {
         let point = GamutPoint { x: 1.0, y: 3.0 };
-        let triangle = ColorGamut{
+        let triangle = ColorGamut {
             red: GamutPoint { x: 4.0, y: 1.0 },
             green: GamutPoint { x: 5.0, y: 3.0 },
-            blue: GamutPoint { x: 2.0, y: 1.0 }
+            blue: GamutPoint { x: 2.0, y: 1.0 },
         };
         assert!(!triangle.point_in_gamut(&point));
     }
@@ -347,12 +355,12 @@ mod test {
         let triangle = ColorGamut {
             red: GamutPoint { x: 2.0, y: 1.0 },
             green: GamutPoint { x: 2.0, y: 3.0 },
-            blue: GamutPoint { x: 3.0, y: 2.0 }
+            blue: GamutPoint { x: 3.0, y: 2.0 },
         };
 
         let new_point = triangle.closest_point(&p);
 
-        assert_eq!(new_point.x, 2.0);//use serde_json::Value;
+        assert_eq!(new_point.x, 2.0); //use serde_json::Value;
         assert_eq!(new_point.y, 2.0);
     }
 

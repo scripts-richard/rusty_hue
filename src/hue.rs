@@ -8,8 +8,8 @@ use serde_json::Value;
 use std::collections::HashMap;
 use std::env;
 use std::error::Error;
-use std::fs::File;
 use std::fmt;
+use std::fs::File;
 use std::io::prelude::*;
 
 use colors;
@@ -23,8 +23,7 @@ pub enum HueError {
 impl fmt::Display for HueError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            HueError::IndexError |
-            HueError::NameError => f.write_str("Notfound"),
+            HueError::IndexError | HueError::NameError => f.write_str("Notfound"),
         }
     }
 }
@@ -39,8 +38,7 @@ impl Error for HueError {
 }
 
 /// Represents the state field of a light. Matches the JSON data fields to allow for serialization.
-#[derive(Debug)]
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct LightState {
     on: bool,
     bri: u8,
@@ -56,8 +54,7 @@ pub struct LightState {
 
 /// Represents a single light. Matches the JSON data fields to allow for serialization. Note: type
 /// is a rust keyword and must be changed to light_type before use of the data structure.
-#[derive(Debug)]
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Light {
     state: LightState,
     light_type: String,
@@ -77,7 +74,6 @@ pub struct Hue {
     lights: HashMap<String, Light>,
 }
 
-
 impl Hue {
     /// Finds the IP and lights of a Hue system and returns them in a Hue data structure. Requires
     /// an API token.
@@ -88,10 +84,12 @@ impl Hue {
 
         let base_address = format!("http://{}/api/{}/lights", ip, token);
 
-        let mut hue = Hue { ip: ip,
-                            token: token,
-                            base_address: base_address,
-                            lights: lights };
+        let mut hue = Hue {
+            ip: ip,
+            token: token,
+            base_address: base_address,
+            lights: lights,
+        };
 
         hue.get_lights()?;
 
@@ -107,7 +105,8 @@ impl Hue {
         let mut index = 1;
 
         while json[index.to_string()].is_object() {
-            let light = serde_json::to_string(&json[index.to_string()])?.replace("type", "light_type");
+            let light =
+                serde_json::to_string(&json[index.to_string()])?.replace("type", "light_type");
             let light: Light = serde_json::from_str(&light)?;
             self.lights.insert(index.to_string(), light);
             index += 1;
@@ -132,11 +131,17 @@ impl Hue {
     /// Helper function for setting the color value by RGB for a single light given its index.
     fn set_color_by_index_and_rgb(&self, index: &str, rgb: &colors::RGB) -> Result<(), Box<Error>> {
         if !self.lights.contains_key(index) {
-            return Err(From::from(format!("Light index: {} does not exist.", index)));
+            return Err(From::from(format!(
+                "Light index: {} does not exist.",
+                index
+            )));
         }
 
         if !self.lights[index].state.reachable {
-            return Err(From::from(format!("Light at index: {} is not reachable.", index)));
+            return Err(From::from(format!(
+                "Light at index: {} is not reachable.",
+                index
+            )));
         }
 
         let mut xy = colors::XY::from_rgb(rgb);
@@ -145,7 +150,11 @@ impl Hue {
         }
 
         let url = format!("{}/{}/state", self.base_address, index);
-        let body = format!("{{\"bri\": {}, \"xy\": {} }}", xy.brightness, xy.xy_string());
+        let body = format!(
+            "{{\"bri\": {}, \"xy\": {} }}",
+            xy.brightness,
+            xy.xy_string()
+        );
 
         let client = reqwest::Client::new();
         client.put(&url).body(body).send()?;
@@ -227,7 +236,10 @@ impl Hue {
     /// Given the index of a light and RGB color, will set the color of that light.
     pub fn set_color_by_index_and_color(&self, index: &str, color: &str) -> Result<(), Box<Error>> {
         if !self.lights.contains_key(index) {
-            return Err(From::from(format!("Light index '{}' does not exist.", index)));
+            return Err(From::from(format!(
+                "Light index '{}' does not exist.",
+                index
+            )));
         }
 
         let colors = colors::load_colors_from_file()?;
@@ -266,7 +278,10 @@ impl Hue {
     /// Rename the light with the provided index.
     pub fn rename_light(&self, index: &str, name: &str) -> Result<(), Box<Error>> {
         if !self.lights.contains_key(index) {
-            return Err(From::from(format!("Light index '{}' does not exist.", index)));
+            return Err(From::from(format!(
+                "Light index '{}' does not exist.",
+                index
+            )));
         }
 
         let url = format!("{}/{}", self.base_address, index);
@@ -299,11 +314,9 @@ fn get_token() -> Result<(String), Box<Error>> {
             token.truncate(40);
             return Ok(token);
         }
-        None => Err(From::from("Failed to get home directory."))
+        None => Err(From::from("Failed to get home directory.")),
     }
-
 }
-
 
 #[cfg(test)]
 mod test {
