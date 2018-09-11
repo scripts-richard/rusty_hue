@@ -1,6 +1,6 @@
 [package]
 name = "rusty_hue"
-version = "0.3.0"
+version = "0.4.0"
 authors = ["Richard Mills <scripts-richard@gmail.com>"]
 
 [dependencies]
