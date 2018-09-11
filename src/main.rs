@@ -4,7 +4,6 @@ extern crate clap;
 extern crate rusty_hue;
 use rusty_hue::hue::Hue;
 
-
 fn subcommand_color(hue: &Hue, matches: &clap::ArgMatches) {
     let index = matches.value_of("index");
     let name = matches.value_of("name");
@@ -99,7 +98,7 @@ fn subcommand_toggle(hue: &Hue, matches: &clap::ArgMatches) {
 
 fn main() {
     let matches = clap_app!(RustyHue =>
-        (version: "0.3")
+        (version: "0.4")
         (author: "Richard Mills <scripts.richard@gmail.com>")
         (about: "Control your Hue lights from the command line.")
         (@arg index: -i --index +takes_value "Select light by its index.")
