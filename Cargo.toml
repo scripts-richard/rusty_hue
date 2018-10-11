@@ -7,5 +7,5 @@ authors = ["Richard Mills <scripts-richard@gmail.com>"]
 serde = "1.0.59"
 serde_json = "1.0.17"
 serde_derive = "1.0.59"
-reqwest = "0.8.6"
+reqwest = "0.9.2"
 clap = "2.32.0"

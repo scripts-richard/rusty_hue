@@ -16,9 +16,9 @@ fn main() {
             (version: "0.1")
             (@arg COLOR: +required "Color to be set.")
         )
-        (@subcommand rgb +>
-            (about: "Set color by rgb (e.x. '233,222,123)')")
-            (version "0.1")
+        (@subcommand rgb =>
+            (about: "Set color by rgb (e.x. '233,222,123').")
+            (version: "0.1")
             (@arg RGB: +required "RGB to be set.")
         )
         (@subcommand info =>
@@ -58,6 +58,10 @@ fn main() {
                     _ => (), // Any other condition besides the above will be caught by the arg parser.
                 }
             }
+            return;
+        }
+
+        Some("rgb") => {
             return;
         }
 
